@@ -95,7 +95,7 @@ int main (void) {
       OCR0B = i;              // blue (green)
       delay(50);
     }                 // fades red to full off and green to full on
-    DDRB |= (1 << DDB1);        // turns blue output on
+
     TIFR0 |= (1 << TOV0);     // clears flag
     while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
@@ -105,6 +105,7 @@ int main (void) {
     // // BLU = fades from OFF to ON
     // // GRN = fades from ON to OFF
     DDRB &= ~(1 << DDB0);       // turns red off (transistor drive)
+    DDRB |= (1 << DDB1);        // turns blue output on
     for (i = MINBRITE; i < MAXBRITE; i++){
       OCR0A = MAXBRITE-i;     // red (green)
       OCR0B = i;              // blue
