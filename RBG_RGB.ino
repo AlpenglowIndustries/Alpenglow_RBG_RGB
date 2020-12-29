@@ -43,11 +43,11 @@ void fade (void) {
 
 int main (void) {
 
-  DDRB = (1 << DDB0 | 1 << DDB1 | 1 << DDB2);  // PB0, 1, 2 outputs enabled
-  sei();
+  DDRB = (1 << DDB0 | 1 << DDB1 | 1 << DDB2);         // PB0, 1, 2 outputs enabled
+  sei();                                              // all interrupts enabled
 
   TCCR0A = (1 << COM0A1 | 1 << COM0B1 | 1 << WGM00);  // Phase-correct PWM 8-bit mode, A and B
-  TCCR0B = (1 << CS01);  // clk/8, timer started
+  TCCR0B = (1 << CS01);                               // clk/8, timer started
 
   /*
   The General Gist:
@@ -98,7 +98,7 @@ int main (void) {
     DDRB |= (1 << DDB2);        // turns green output on
     fade();                     // fades red to off, green to on, waits for bottom
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
-    TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring on A (red)
+    TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring for green on A (red)
 
     // // RED = OFF
     // // BLU = fades from OFF to ON
