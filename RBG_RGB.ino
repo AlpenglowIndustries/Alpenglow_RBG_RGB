@@ -87,7 +87,7 @@ int main (void) {
     TIFR0 |= (1 << TOV0);       // clears flag
     while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
     PORTB &= ~(1 << PB2);       // starts green from known low state (ON)
-    TIMSK0 |= (1 << OCIE0B);    // enables output compare B match interrupt for green PWM mirroring on red
+    TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for green on B (blue)
     DDRB |= (1 << DDB2);        // turns green on
     uint8_t i;
     for (i = MINBRITE; i < MAXBRITE; i++){
@@ -96,16 +96,24 @@ int main (void) {
       delay(50);
     }                 // fades red to full off and green to full on
     DDRB |= (1 << DDB1);        // turns blue output on
+    TIFR0 |= (1 << TOV0);     // clears flag
+    while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
+    TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
+    TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring on A (red)
 
     // // RED = OFF
     // // BLU = fades from OFF to ON
     // // GRN = fades from ON to OFF
-    // DDRB &= ~(1 << DDB0);       // turns red off (transistor drive)
-    // fade();                     // fades green to full off and blue to full on
-     TIFR0 |= (1 << TOV0);     // clears flag
-     while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
-     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring
-    // DDRB |= (1 << DDB0);        // turns red output on
+    DDRB &= ~(1 << DDB0);       // turns red off (transistor drive)
+    for (i = MINBRITE; i < MAXBRITE; i++){
+      OCR0A = MAXBRITE-i;     // red (green)
+      OCR0B = i;              // blue
+      delay(50);
+    }                 // fades red to full off and green to full on
+    DDRB |= (1 << DDB0);        // turns red output on
+    TIFR0 |= (1 << TOV0);     // clears flag
+    while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
+    TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring on A (red)
 
   }   // end while(1)
 }     // end main
