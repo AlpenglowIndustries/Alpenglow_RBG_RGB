@@ -60,7 +60,11 @@ int main (void) {
   Pretty slick, eh?
   There are some additional commands to ensure we consistently turn the output mirroring on and off at
     the bottom of the timer, this ensures the mirrored PWM isn't inverted.
-  We purposefully invert the PWM by setting the pin high or low before starting the interrupt toggling.
+  Red and blue are driven through a transistor, green is driven directly from the processor pin.
+    The LEDs are common-anode, hardwired to V+.  Switching GND toggles the LEDs on/off.  Therefore,
+    the transistor-driven LEDs have "normal" logic (high means LED is ON), but the green one is inverted
+    (high means GREEN is OFF).
+  We purposefully invert the green PWM by setting the pin high or low before starting the interrupt toggling.
   */
 
   while (1) {
