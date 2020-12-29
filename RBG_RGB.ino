@@ -26,12 +26,14 @@ void delay (uint16_t time) {
 }
 
 void cycle (void) {
+  TIFR0 |= (1 << TOV0);
   uint8_t i;
   for (i = 4; i < MAXBRITE; i++){
     OCR0A = MAXBRITE-i;     // red
     OCR0B = i;              // blue
     delay(50);
   }
+  while (!(TIFR0 &= (1 << TOV0)));
 }
 
 int main (void) {
@@ -53,27 +55,21 @@ int main (void) {
     }
 
     DDRB &= ~(1 << DDB1);       // turns blue off
-    while (!(TIFR0 &= (1 << TOV0)));
+    while (!(TIFR0 &= (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
     PORTB &= ~(1 << PB2);
     TIMSK0 |= (1 << OCIE0B);    // enables output compare B match interrupt for green PWM mirroring on red
-    TIFR0 |= (1 << TOV0);
     cycle();
-    while (!(TIFR0 &= (1 << TOV0)));
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring
     TIFR0 |= (1 << TOV0);
-//    OCR0B = 4;                  // sets blue to low
     DDRB |= (1 << DDB1);        // turns blue output on
     PORTB &= ~(1 << PB2);
 
     DDRB &= ~(1 << DDB0);       // turns red off
     while (!(TIFR0 &= (1 << TOV0)));
     TIMSK0 |= (1 << OCIE0A);    // enables output compare A match interrupt for green PWM mirroring on blue
-    TIFR0 |= (1 << TOV0);
     cycle();
-    while (!(TIFR0 &= (1 << TOV0)));
     TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring
     TIFR0 |= (1 << TOV0);
-//    OCR0A = 4;                  // sets red to low
     DDRB |= (1 << DDB0);        // turns red output on
 
   }   // end while(1)
