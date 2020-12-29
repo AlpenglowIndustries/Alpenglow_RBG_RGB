@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #define MAXBRITE  75
-#define MINBRITE  4
+#define MINBRITE  4   // under 4 and shit gets wiggy
 
 volatile uint32_t counter;
 
