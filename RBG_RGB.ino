@@ -35,6 +35,11 @@ void fade (void) {
   }
 }
 
+void waitForBottom (void) {
+  TIFR0 |= (1 << TOV0);       // clears flag
+  while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
+}
+
 int main (void) {
 
   DDRB = (1 << DDB0 | 1 << DDB1 | 1 << DDB2);  // PB0, 1, 2 outputs enabled
@@ -84,14 +89,16 @@ int main (void) {
     // BLU = OFF
     // GRN = fades from OFF to ON
     DDRB &= ~(1 << DDB1);       // turns blue output off (transistor drive)
-    TIFR0 |= (1 << TOV0);       // clears flag
-    while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
+//    TIFR0 |= (1 << TOV0);       // clears flag
+//    while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
+    waitForBottom();
     PORTB &= ~(1 << PB2);       // starts green output from known low state (ON)
     TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for green on B (blue)
     DDRB |= (1 << DDB2);        // turns green output on
     fade();                     // fades red to off, green to on
-    TIFR0 |= (1 << TOV0);       // clears flag
-    while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends/begins at same place
+    // TIFR0 |= (1 << TOV0);       // clears flag
+    // while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends/begins at same place
+    waitForBottom();
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
     TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring on A (red)
 
@@ -101,8 +108,9 @@ int main (void) {
     DDRB &= ~(1 << DDB0);       // turns red output off (transistor drive)
     DDRB |= (1 << DDB1);        // turns blue output on
     fade();                     // fades green to off, blue to on
-    TIFR0 |= (1 << TOV0);       // clears flag
-    while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
+    // TIFR0 |= (1 << TOV0);       // clears flag
+    // while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
+    waitForBottom();
     TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring on A (red)
 
   }   // end while(1)
