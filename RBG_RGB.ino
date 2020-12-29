@@ -29,10 +29,10 @@ void delay (uint16_t time) {  // brute force semi-accurate delay routine that do
 void fade (void) {
   uint8_t j;
   for (j = MINBRITE; j < MAXBRITE; j++){
-    OCR0A = j;                // red
-    OCR0B = MAXBRITE-j;       // blue
+    OCR0A = MAXBRITE-j;     // red (green)
+    OCR0B = j;              // blue
     delay(50);
-  }
+  }                 // fades red to full off and green to full on
 }
 
 int main (void) {
@@ -72,13 +72,12 @@ int main (void) {
     // GRN = OFF
     PORTB |= (1 << PB2);        // turns green off (direct drive)
     DDRB &= ~(1 << DDB2);       // turns green output off
-    fade();
-    // uint8_t j;
-    // for (j = MINBRITE; j < MAXBRITE; j++){
-    //   OCR0A = j;                // red
-    //   OCR0B = MAXBRITE-j;       // blue
-    //   delay(50);
-    // }
+    uint8_t i;
+    for (i = MINBRITE; i < MAXBRITE; i++){
+      OCR0A = i;                // red
+      OCR0B = MAXBRITE-i;       // blue
+      delay(50);
+    }
 
     // RED = fades from ON to OFF
     // BLU = OFF
@@ -89,13 +88,13 @@ int main (void) {
     PORTB &= ~(1 << PB2);       // starts green from known low state (ON)
     TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for green on B (blue)
     DDRB |= (1 << DDB2);        // turns green on
-    uint8_t i;
-    for (i = MINBRITE; i < MAXBRITE; i++){
-      OCR0A = MAXBRITE-i;     // red
-      OCR0B = i;              // blue (green)
-      delay(50);
-    }                 // fades red to full off and green to full on
-
+    fade();
+    // uint8_t i;
+    // for (i = MINBRITE; i < MAXBRITE; i++){
+    //   OCR0A = MAXBRITE-i;     // red
+    //   OCR0B = i;              // blue (green)
+    //   delay(50);
+    // }                 // fades red to full off and green to full on
     TIFR0 |= (1 << TOV0);     // clears flag
     while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
@@ -106,11 +105,12 @@ int main (void) {
     // // GRN = fades from ON to OFF
     DDRB &= ~(1 << DDB0);       // turns red off (transistor drive)
     DDRB |= (1 << DDB1);        // turns blue output on
-    for (i = MINBRITE; i < MAXBRITE; i++){
-      OCR0A = MAXBRITE-i;     // red (green)
-      OCR0B = i;              // blue
-      delay(50);
-    }                 // fades red to full off and green to full on
+    fade();
+    // for (i = MINBRITE; i < MAXBRITE; i++){
+    //   OCR0A = MAXBRITE-i;     // red (green)
+    //   OCR0B = i;              // blue
+    //   delay(50);
+    // }                 // fades red to full off and green to full on
     DDRB |= (1 << DDB0);        // turns red output on
     TIFR0 |= (1 << TOV0);     // clears flag
     while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
