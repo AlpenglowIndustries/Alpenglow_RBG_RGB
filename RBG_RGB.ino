@@ -26,6 +26,11 @@ void delay (uint16_t time) {  // brute force semi-accurate delay routine that do
   do counter--; while (counter != 0);
 }
 
+void waitForBottom (void) {
+  TIFR0 |= (1 << TOV0);            // clears flag
+  while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
+}
+
 void fade (void) {
   uint8_t j;
   for (j = MINBRITE; j < MAXBRITE; j++){
@@ -33,11 +38,7 @@ void fade (void) {
     OCR0B = j;              // blue (green)
     delay(50);
   }
-}
-
-void waitForBottom (void) {
-  TIFR0 |= (1 << TOV0);       // clears flag
-  while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
+  waitForBottom();
 }
 
 int main (void) {
@@ -67,7 +68,7 @@ int main (void) {
     The LEDs are common-anode, hardwired to V+.  Switching GND toggles the LEDs on/off.  Therefore,
     the transistor-driven LEDs have "normal" logic (high means LED is ON), but the green one is inverted
     (high means GREEN is OFF).
-  We purposefully invert the green PWM by setting the pin high or low before starting the interrupt toggling.
+  We purposefully invert the green PWM by setting the pin low before starting the interrupt toggling.
   */
 
   while (1) {
@@ -75,13 +76,14 @@ int main (void) {
     // RED = fades from OFF to ON
     // BLU = fades from ON to OFF
     // GRN = OFF
+                                // blue is already on
     PORTB |= (1 << PB2);        // turns green off (direct drive)
     DDRB &= ~(1 << DDB2);       // turns green output off
     DDRB |= (1 << DDB0);        // turns red output on
     uint8_t i;
     for (i = MINBRITE; i < MAXBRITE; i++){
-      OCR0A = i;                // red
-      OCR0B = MAXBRITE-i;       // blue
+      OCR0A = i;                // red fades to on
+      OCR0B = MAXBRITE-i;       // blue fades to off
       delay(50);
     }
 
@@ -89,16 +91,12 @@ int main (void) {
     // BLU = OFF
     // GRN = fades from OFF to ON
     DDRB &= ~(1 << DDB1);       // turns blue output off (transistor drive)
-//    TIFR0 |= (1 << TOV0);       // clears flag
-//    while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
-    waitForBottom();
-    PORTB &= ~(1 << PB2);       // starts green output from known low state (ON)
+    waitForBottom();            // to make sure PWM toggling starts at known spot,
+                                //   prevents accidental PWM inversion and irregular behavior
+    PORTB &= ~(1 << PB2);       // starts green output from known low state (ON), this inverts it
     TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for green on B (blue)
     DDRB |= (1 << DDB2);        // turns green output on
-    fade();                     // fades red to off, green to on
-    // TIFR0 |= (1 << TOV0);       // clears flag
-    // while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends/begins at same place
-    waitForBottom();
+    fade();                     // fades red to off, green to on, waits for bottom
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
     TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring on A (red)
 
@@ -107,10 +105,7 @@ int main (void) {
     // // GRN = fades from ON to OFF
     DDRB &= ~(1 << DDB0);       // turns red output off (transistor drive)
     DDRB |= (1 << DDB1);        // turns blue output on
-    fade();                     // fades green to off, blue to on
-    // TIFR0 |= (1 << TOV0);       // clears flag
-    // while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
-    waitForBottom();
+    fade();                     // fades green to off, blue to on, waits for bottom
     TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring on A (red)
 
   }   // end while(1)
