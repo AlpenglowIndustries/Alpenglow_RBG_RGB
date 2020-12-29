@@ -26,14 +26,14 @@ void delay (uint16_t time) {
 }
 
 void cycle (void) {
-  TIFR0 |= (1 << TOV0);
+  TIFR0 |= (1 << TOV0);     // clears flag
   uint8_t i;
   for (i = 4; i < MAXBRITE; i++){
     OCR0A = MAXBRITE-i;     // red
     OCR0B = i;              // blue
     delay(50);
   }
-  while (!(TIFR0 &= (1 << TOV0)));
+  while (!(TIFR0 &= (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
 }
 
 int main (void) {
@@ -46,30 +46,31 @@ int main (void) {
 
   while (1) {
 
-    PORTB |= (1 << PB2);  // turns green off (direct drive)
+    PORTB |= (1 << PB2);        // turns green off (direct drive)
     uint8_t j;
     for (j = 4; j < MAXBRITE; j++){
-      OCR0A = j;
+      OCR0A = j;                // cycles red to full on and blue to full off
       OCR0B = MAXBRITE-j;
       delay(50);
     }
 
-    DDRB &= ~(1 << DDB1);       // turns blue off
+    DDRB &= ~(1 << DDB1);       // turns blue off (transistor drive)
     while (!(TIFR0 &= (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
-    PORTB &= ~(1 << PB2);
+    PORTB &= ~(1 << PB2);       // starts green from known low state (ON)
     TIMSK0 |= (1 << OCIE0B);    // enables output compare B match interrupt for green PWM mirroring on red
-    cycle();
+    cycle();                    // cycles red to full off and green to full on
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring
-    TIFR0 |= (1 << TOV0);
+    TIFR0 |= (1 << TOV0);       // clears flag
     DDRB |= (1 << DDB1);        // turns blue output on
-    PORTB &= ~(1 << PB2);
 
-    DDRB &= ~(1 << DDB0);       // turns red off
-    while (!(TIFR0 &= (1 << TOV0)));
+
+    DDRB &= ~(1 << DDB0);       // turns red off (transistor drive)
+    while (!(TIFR0 &= (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
+    PORTB &= ~(1 << PB2);       // starts green from known low state (ON)
     TIMSK0 |= (1 << OCIE0A);    // enables output compare A match interrupt for green PWM mirroring on blue
-    cycle();
+    cycle();                    // cycles green to full off and blue to full on
     TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring
-    TIFR0 |= (1 << TOV0);
+    TIFR0 |= (1 << TOV0);       // clears flag
     DDRB |= (1 << DDB0);        // turns red output on
 
   }   // end while(1)
