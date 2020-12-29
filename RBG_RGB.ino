@@ -13,19 +13,19 @@ volatile uint32_t counter;
 // PB2 = green
 
 ISR(TIM0_COMPA_vect) {
-  PINB |= (1 << PB2);   // toggles value of PB2, mirrors the OCR0A PB0 PWM
+  PINB |= (1 << PB2);   // toggles value of PB2, mirrors the OCR0A PB0 PWM (red)
 }
 
 ISR(TIM0_COMPB_vect) {
-  PINB |= (1 << PB2);
+  PINB |= (1 << PB2);   // toggles value of PB2, mirrors the OCR0B PB1 PWM (blue)
 }
 
-void delay (uint16_t time) {
+void delay (uint16_t time) {  // brute force semi-accurate delay routine that doesn't use a timer
   counter = 46 * time;
   do counter--; while (counter != 0);
 }
 
-void cycle (void) {
+void fade (void) {
   TIFR0 |= (1 << TOV0);     // clears flag
   uint8_t i;
   for (i = 4; i < MAXBRITE; i++){
@@ -44,31 +44,59 @@ int main (void) {
   TCCR0A = (1 << COM0A1 | 1 << COM0B1 | 1 << WGM00);  // Phase-correct PWM 8-bit mode, A and B
   TCCR0B = (1 << CS01);  // clk/8, timer started
 
+  /*
+  The General Gist:
+  There are only 2 hardware PWM outputs on an ATTiny4, PB0 (OCR0A, RED) and PB1 (OCR0B, BLUE).
+  We need to generate a third PWM in order to fade the GREEN.
+  Fortunately, only 2 have to be running at any one time to fade through the rainbow.
+  One color is always off, while the other two fade from off to bright and vice versa.
+  So we can mirror one of the PWM outputs by toggling PB2 in the interrupt routine that runs
+    when the timer compare flag is set, which happens on each side of the pulse width when
+    the timer is in phase correct mode.
+  Even though the timer is running and its output is mirrored to PB2, we can turn that timer's
+    hardwired LED off by changing its port/pin to an input.  Then no current drives the transistor gate,
+    the transistor is OFF, and so is the LED attached to it.
+  Pretty slick, eh?
+  There are some additional commands to ensure we consistently turn the output mirroring on and off at
+    the bottom of the timer, this ensures the mirrored PWM isn't inverted.
+  We purposefully invert the PWM by setting the pin high or low before starting the interrupt toggling.
+
+
+  */
+
   while (1) {
 
+    // RED = fades from OFF to ON
+    // BLU = fades from ON to OFF
+    // GRN = OFF
     PORTB |= (1 << PB2);        // turns green off (direct drive)
     uint8_t j;
     for (j = 4; j < MAXBRITE; j++){
-      OCR0A = j;                // cycles red to full on and blue to full off
+      OCR0A = j;                // fades red to full on and blue to full off
       OCR0B = MAXBRITE-j;
       delay(50);
     }
 
+    // RED = fades from ON to OFF
+    // BLU = OFF
+    // GRN = fades from OFF to ON
     DDRB &= ~(1 << DDB1);       // turns blue off (transistor drive)
     while (!(TIFR0 &= (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
     PORTB &= ~(1 << PB2);       // starts green from known low state (ON)
     TIMSK0 |= (1 << OCIE0B);    // enables output compare B match interrupt for green PWM mirroring on red
-    cycle();                    // cycles red to full off and green to full on
+    fade();                     // fades red to full off and green to full on
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring
     TIFR0 |= (1 << TOV0);       // clears flag
     DDRB |= (1 << DDB1);        // turns blue output on
 
-
+    // RED = OFF
+    // BLU = fades from OFF to ON
+    // GRN = fades from ON to OFF
     DDRB &= ~(1 << DDB0);       // turns red off (transistor drive)
     while (!(TIFR0 &= (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
     PORTB &= ~(1 << PB2);       // starts green from known low state (ON)
     TIMSK0 |= (1 << OCIE0A);    // enables output compare A match interrupt for green PWM mirroring on blue
-    cycle();                    // cycles green to full off and blue to full on
+    fade();                     // fades green to full off and blue to full on
     TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring
     TIFR0 |= (1 << TOV0);       // clears flag
     DDRB |= (1 << DDB0);        // turns red output on
