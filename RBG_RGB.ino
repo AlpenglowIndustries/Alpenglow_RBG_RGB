@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define MAXBRITE  75
+#define MINBRITE  4
 
 volatile uint32_t counter;
 
@@ -28,7 +29,7 @@ void delay (uint16_t time) {  // brute force semi-accurate delay routine that do
 void fade (void) {
   TIFR0 |= (1 << TOV0);     // clears flag
   uint8_t i;
-  for (i = 4; i < MAXBRITE; i++){
+  for (i = MINBRITE; i < MAXBRITE; i++){
     OCR0A = MAXBRITE-i;     // red
     OCR0B = i;              // blue
     delay(50);
@@ -60,8 +61,6 @@ int main (void) {
   There are some additional commands to ensure we consistently turn the output mirroring on and off at
     the bottom of the timer, this ensures the mirrored PWM isn't inverted.
   We purposefully invert the PWM by setting the pin high or low before starting the interrupt toggling.
-
-
   */
 
   while (1) {
@@ -71,7 +70,7 @@ int main (void) {
     // GRN = OFF
     PORTB |= (1 << PB2);        // turns green off (direct drive)
     uint8_t j;
-    for (j = 4; j < MAXBRITE; j++){
+    for (j = MINBRITE; j < MAXBRITE; j++){
       OCR0A = j;                // fades red to full on and blue to full off
       OCR0B = MAXBRITE-j;
       delay(50);
