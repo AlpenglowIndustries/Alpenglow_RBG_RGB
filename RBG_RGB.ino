@@ -85,18 +85,12 @@ int main (void) {
     DDRB &= ~(1 << DDB1);       // turns blue off (transistor drive)
     TIFR0 |= (1 << TOV0);       // clears flag
     while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
-    PORTB &= ~(1 << PB2);       // starts green from known low state (ON)
+    PORTB &= ~(1 << PB2);       // starts green output from known low state (ON)
     TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for green on B (blue)
-    DDRB |= (1 << DDB2);        // turns green on
-    fade();
-    // uint8_t i;
-    // for (i = MINBRITE; i < MAXBRITE; i++){
-    //   OCR0A = MAXBRITE-i;     // red
-    //   OCR0B = i;              // blue (green)
-    //   delay(50);
-    // }                 // fades red to full off and green to full on
-    TIFR0 |= (1 << TOV0);     // clears flag
-    while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
+    DDRB |= (1 << DDB2);        // turns green output on
+    fade();                     // fades red to off, green to on
+    TIFR0 |= (1 << TOV0);       // clears flag
+    while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends/begins at same place
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
     TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring on A (red)
 
@@ -104,15 +98,10 @@ int main (void) {
     // // BLU = fades from OFF to ON
     // // GRN = fades from ON to OFF
     DDRB &= ~(1 << DDB0);       // turns red off (transistor drive)
-    DDRB |= (1 << DDB1);        // turns blue output on
-    fade();
-    // for (i = MINBRITE; i < MAXBRITE; i++){
-    //   OCR0A = MAXBRITE-i;     // red (green)
-    //   OCR0B = i;              // blue
-    //   delay(50);
-    // }                 // fades red to full off and green to full on
+    DDRB |= (1 << DDB1);        // turns blue on
+    fade();                     // fades green to off, blue to on
     DDRB |= (1 << DDB0);        // turns red output on
-    TIFR0 |= (1 << TOV0);     // clears flag
+    TIFR0 |= (1 << TOV0);       // clears flag
     while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
     TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring on A (red)
 
