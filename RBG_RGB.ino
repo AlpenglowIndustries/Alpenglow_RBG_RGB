@@ -61,9 +61,8 @@ int main (void) {
     while (!(TIFR0 &= (1 << TOV0)));
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring
     TIFR0 |= (1 << TOV0);
-    OCR0B = 4;                  // sets blue to low
+//    OCR0B = 4;                  // sets blue to low
     DDRB |= (1 << DDB1);        // turns blue output on
-//    PORTB |= (1 << PB2);        // sets green to full on
     PORTB &= ~(1 << PB2);
 
     DDRB &= ~(1 << DDB0);       // turns red off
@@ -74,8 +73,7 @@ int main (void) {
     while (!(TIFR0 &= (1 << TOV0)));
     TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring
     TIFR0 |= (1 << TOV0);
-//    PORTB &= ~(1 << PB2);       // sets green to low
-    OCR0A = 4;                  // sets red to low
+//    OCR0A = 4;                  // sets red to low
     DDRB |= (1 << DDB0);        // turns red output on
 
   }   // end while(1)
