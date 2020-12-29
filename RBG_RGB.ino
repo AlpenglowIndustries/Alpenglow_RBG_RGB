@@ -30,14 +30,14 @@ void fade (void) {
   uint8_t j;
   for (j = MINBRITE; j < MAXBRITE; j++){
     OCR0A = MAXBRITE-j;     // red (green)
-    OCR0B = j;              // blue
+    OCR0B = j;              // blue (green)
     delay(50);
-  }                 // fades red to full off and green to full on
+  }
 }
 
 int main (void) {
 
-  DDRB = (1 << DDB0 | 1 << DDB1 | 1 << DDB2);  // PB0, 1, 2 as outputs
+  DDRB = (1 << DDB0 | 1 << DDB1 | 1 << DDB2);  // PB0, 1, 2 outputs enabled
   sei();
 
   TCCR0A = (1 << COM0A1 | 1 << COM0B1 | 1 << WGM00);  // Phase-correct PWM 8-bit mode, A and B
@@ -72,6 +72,7 @@ int main (void) {
     // GRN = OFF
     PORTB |= (1 << PB2);        // turns green off (direct drive)
     DDRB &= ~(1 << DDB2);       // turns green output off
+    DDRB |= (1 << DDB0);        // turns red output on
     uint8_t i;
     for (i = MINBRITE; i < MAXBRITE; i++){
       OCR0A = i;                // red
@@ -82,7 +83,7 @@ int main (void) {
     // RED = fades from ON to OFF
     // BLU = OFF
     // GRN = fades from OFF to ON
-    DDRB &= ~(1 << DDB1);       // turns blue off (transistor drive)
+    DDRB &= ~(1 << DDB1);       // turns blue output off (transistor drive)
     TIFR0 |= (1 << TOV0);       // clears flag
     while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
     PORTB &= ~(1 << PB2);       // starts green output from known low state (ON)
@@ -97,10 +98,9 @@ int main (void) {
     // // RED = OFF
     // // BLU = fades from OFF to ON
     // // GRN = fades from ON to OFF
-    DDRB &= ~(1 << DDB0);       // turns red off (transistor drive)
-    DDRB |= (1 << DDB1);        // turns blue on
+    DDRB &= ~(1 << DDB0);       // turns red output off (transistor drive)
+    DDRB |= (1 << DDB1);        // turns blue output on
     fade();                     // fades green to off, blue to on
-    DDRB |= (1 << DDB0);        // turns red output on
     TIFR0 |= (1 << TOV0);       // clears flag
     while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling ends at same place
     TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring on A (red)
