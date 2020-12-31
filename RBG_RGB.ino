@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #define MAXBRITE  75
-#define MINBRITE  4   // under 4 and shit gets wiggy
+#define MINBRITE  4   // under 4 and shit gets wiggy, interrupts seem to hang processor
 
 volatile uint32_t counter;
 
@@ -33,10 +33,10 @@ void waitForBottom (void) {
 
 void fade (void) {
   uint8_t j;
-  for (j = MINBRITE; j < MAXBRITE; j++){
+  for (j = MINBRITE; j < MAXBRITE-MINBRITE; j++){
     OCR0A = MAXBRITE-j;     // red (green)
     OCR0B = j;              // blue (green)
-    delay(50);
+    delay(60);
   }
   waitForBottom();
 }
@@ -77,14 +77,14 @@ int main (void) {
     // BLU = fades from ON to OFF
     // GRN = OFF
                                 // blue is already on
-    PORTB |= (1 << PB2);        // turns green off (direct drive)
+    PORTB &= ~(1 << PB2);        // turns green off (direct drive)
     DDRB &= ~(1 << DDB2);       // turns green output off
     DDRB |= (1 << DDB0);        // turns red output on
     uint8_t i;
-    for (i = MINBRITE; i < MAXBRITE; i++){
+    for (i = MINBRITE; i < MAXBRITE-MINBRITE; i++){
       OCR0A = i;                // red fades to on
       OCR0B = MAXBRITE-i;       // blue fades to off
-      delay(50);
+      delay(60);
     }
 
     // RED = fades from ON to OFF
@@ -93,11 +93,12 @@ int main (void) {
     DDRB &= ~(1 << DDB1);       // turns blue output off (transistor drive)
     waitForBottom();            // to make sure PWM toggling starts at known spot,
                                 //   prevents accidental PWM inversion and irregular behavior
-    PORTB &= ~(1 << PB2);       // starts green output from known low state (ON), this inverts it
     TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for green on B (blue)
     DDRB |= (1 << DDB2);        // turns green output on
     fade();                     // fades red to off, green to on, waits for bottom
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
+    waitForBottom();
+    PORTB &= ~(1 << PB2);        // starts green output from known low state (OFF), this inverts it
     TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring for green on A (red)
 
     // // RED = OFF
