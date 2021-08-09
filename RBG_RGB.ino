@@ -1,4 +1,20 @@
-// Test Program for ATTiny4
+/*
+Software that controls the RBG_RGB Badge
+Makes her RBG LED eyes fade through the rainbow
+Would like to add a mode for just red pulsing depending on slide switch position
+
+Programming the ATTiny4:
+- Power must be 5V
+- Pin 1, TPIDATA, cannot be driving anything of consequence downstream.
+- A switch to isolate power and Pin 1 during programming is a good idea.
+- Programmers - AVRISP mkII using Libusb-win32 driver.  Use Zadig to change driver if
+  you plug it in and get a USB device not found error.
+
+Defaults on reset:
+Clock = 1 MHz (8 MHz internal oscillator / 8)
+Timer Module enabled, normal port operation, OCR0A/B disabled, no clock source (timer stopped)
+
+*/
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -49,6 +65,7 @@ int main (void) {
   TCCR0A = (1 << COM0A1 | 1 << COM0B1 | 1 << WGM00);  // Phase-correct PWM 8-bit mode, A and B
   TCCR0B = (1 << CS01);                               // clk/8, timer started
 
+//  uint8_t slideSw;
   /*
   The General Gist:
   There are only 2 hardware PWM outputs on an ATTiny4, PB0 (OCR0A, RED) and PB1 (OCR0B, BLUE).
@@ -86,6 +103,8 @@ int main (void) {
       OCR0B = MAXBRITE-i;       // blue fades to off
       delay(60);
     }
+//    slideSw = PINB & (1 << PB2);
+
 
     // RED = fades from ON to OFF
     // BLU = OFF
