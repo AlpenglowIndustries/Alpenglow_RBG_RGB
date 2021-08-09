@@ -26,7 +26,7 @@ Thoughts:
 - need to enable atomic read/writes for timer?
 
 */
-
+#include <util/atomic.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdint.h>
@@ -61,8 +61,10 @@ void waitForBottom (void) {  // waits for timer to reach 0 to ensure starting/st
 void fade (void) {  // adjusts the PWM to fade the LED colors
   uint8_t j;
   for (j = 0; j < MAXBRITE - MINBRITE; j++){
-    OCR0A = MAXBRITE - j;     // red (green)
-    OCR0B = j + MINBRITE;              // blue (green)
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+      OCR0A = MAXBRITE - j;     // red (green)
+      OCR0B = j + MINBRITE;     // blue (green)
+    }
     delay(60);
   }
   waitForBottom();
@@ -113,8 +115,10 @@ int main (void) {
     DDRB |= (1 << DDB0);         // turns red output on
     uint8_t i;
     for (i = 0; i < MAXBRITE - MINBRITE; i++){
-      OCR0A = i + MINBRITE;      // red fades to on
-      OCR0B = MAXBRITE - i;      // blue fades to off
+      ATOMIC_BLOCK(ATOMIC_FORCEON) {
+        OCR0A = i + MINBRITE;      // red fades to on
+        OCR0B = MAXBRITE - i;      // blue fades to off
+      }
       delay(60);
     }
 //    slideSw = PINB & (1 << PB2);
@@ -131,7 +135,7 @@ int main (void) {
     fade();                     // fades red to off, green to on, waits for bottom
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
     waitForBottom();
-    PORTB &= ~(1 << PB2);        // starts green output from known low state (OFF), this inverts it
+    PORTB &= ~(1 << PB2);       // starts green output from known low state (OFF), this inverts it
     TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring for green on A (red)
 
     // // RED = OFF
