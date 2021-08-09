@@ -4,15 +4,26 @@ Makes her RBG LED eyes fade through the rainbow
 Would like to add a mode for just red pulsing depending on slide switch position
 
 Programming the ATTiny4:
+- Arduino IDE with ATTiny10 Core by technoblogy:
+  https://github.com/technoblogy/attiny10core
+  http://www.technoblogy.com/show?1YQY (excellent programming instructions and blink code)
+- Set "Board" to ATTiny10/9/5/6
+- Set "Chip" to ATTiny4
 - Power must be 5V
 - Pin 1, TPIDATA, cannot be driving anything of consequence downstream.
 - A switch to isolate power and Pin 1 during programming is a good idea.
-- Programmers - AVRISP mkII using Libusb-win32 driver.  Use Zadig to change driver if
-  you plug it in and get a USB device not found error.
+- Must "Upload using programmer" - no room for a bootloader!  No serial port!
+- Programmers -
+  AVRISP mkII using Libusb-win32 driver.  Use Zadig to change driver if
+    you plug it in and get a USB device not found error (using the default Atmel driver).
+  USBasp - haven't tried this yet.
 
 Defaults on reset:
-Clock = 1 MHz (8 MHz internal oscillator / 8)
-Timer Module enabled, normal port operation, OCR0A/B disabled, no clock source (timer stopped)
+- Clock = 1 MHz (8 MHz internal oscillator / 8)
+- Timer Module enabled, normal port operation, OCR0A/B disabled, no clock source (timer stopped)
+
+Thoughts:
+- need to enable atomic read/writes for timer?
 
 */
 
@@ -42,16 +53,16 @@ void delay (uint16_t time) {  // brute force semi-accurate delay routine that do
   do counter--; while (counter != 0);
 }
 
-void waitForBottom (void) {
+void waitForBottom (void) {  // waits for timer to reach 0 to ensure starting/stopping in correct place
   TIFR0 |= (1 << TOV0);            // clears flag
   while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
 }
 
-void fade (void) {
+void fade (void) {  // adjusts the PWM to fade the LED colors
   uint8_t j;
-  for (j = MINBRITE; j < MAXBRITE-MINBRITE; j++){
-    OCR0A = MAXBRITE-j;     // red (green)
-    OCR0B = j;              // blue (green)
+  for (j = 0; j < MAXBRITE - MINBRITE; j++){
+    OCR0A = MAXBRITE - j;     // red (green)
+    OCR0B = j + MINBRITE;              // blue (green)
     delay(60);
   }
   waitForBottom();
@@ -98,9 +109,9 @@ int main (void) {
     DDRB &= ~(1 << DDB2);       // turns green output off
     DDRB |= (1 << DDB0);        // turns red output on
     uint8_t i;
-    for (i = MINBRITE; i < MAXBRITE-MINBRITE; i++){
-      OCR0A = i;                // red fades to on
-      OCR0B = MAXBRITE-i;       // blue fades to off
+    for (i = 0; i < MAXBRITE - MINBRITE; i++){
+      OCR0A = i + MINBRITE;                // red fades to on
+      OCR0B = MAXBRITE - i;       // blue fades to off
       delay(60);
     }
 //    slideSw = PINB & (1 << PB2);
