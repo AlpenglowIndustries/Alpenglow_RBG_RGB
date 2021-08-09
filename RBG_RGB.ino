@@ -101,17 +101,20 @@ int main (void) {
 
   while (1) {
 
+    // OCR0A = Red
+    // OCROB = Blue
+
     // RED = fades from OFF to ON
     // BLU = fades from ON to OFF
     // GRN = OFF
-                                // blue is already on
+                                 // blue is already on
     PORTB &= ~(1 << PB2);        // turns green off (direct drive)
-    DDRB &= ~(1 << DDB2);       // turns green output off
-    DDRB |= (1 << DDB0);        // turns red output on
+    DDRB &= ~(1 << DDB2);        // turns green output off
+    DDRB |= (1 << DDB0);         // turns red output on
     uint8_t i;
     for (i = 0; i < MAXBRITE - MINBRITE; i++){
-      OCR0A = i + MINBRITE;                // red fades to on
-      OCR0B = MAXBRITE - i;       // blue fades to off
+      OCR0A = i + MINBRITE;      // red fades to on
+      OCR0B = MAXBRITE - i;      // blue fades to off
       delay(60);
     }
 //    slideSw = PINB & (1 << PB2);
