@@ -3,6 +3,14 @@ Software that controls the RBG_RGB Badge
 Makes her RBG LED eyes fade through the rainbow
 Would like to add a mode for just red pulsing depending on slide switch position
 
+Pins:
+1 - Red LED
+2 - GND
+3 - Blue LED
+4 - Green LED
+5 - Vcc
+6 - Reset
+
 Programming the ATTiny4:
 - Arduino IDE with ATTiny10 Core by technoblogy:
   https://github.com/technoblogy/attiny10core
@@ -20,19 +28,22 @@ Programming the ATTiny4:
 
 Defaults on reset:
 - Clock = 1 MHz (8 MHz internal oscillator / 8)
-- Timer Module enabled, normal port operation, OCR0A/B disabled, no clock source (timer stopped)
+- Timer Module enabled, normal port operation, OCR0A/B disabled, no clock source (timer stopped),
+  clock = system clock no prescaling
 
 Thoughts:
-- need to enable atomic read/writes for timer?
+- DONE need to enable atomic read/writes for timer?
+- change transistors to FETs?  3V operation?  Better PWM and current consumption
 
 */
+
 #include <util/atomic.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdint.h>
 
 #define MAXBRITE  75
-#define MINBRITE  4   // under 4 and shit gets wiggy, interrupts seem to hang processor
+#define MINBRITE  4   // minimum PWM resolution is technically 3, but it hangs there
 
 volatile uint32_t counter;
 
@@ -54,8 +65,8 @@ void delay (uint16_t time) {  // brute force semi-accurate delay routine that do
 }
 
 void waitForBottom (void) {  // waits for timer to reach 0 to ensure starting/stopping in correct place
-  TIFR0 |= (1 << TOV0);            // clears flag
-  while (!(TIFR0 & (1 << TOV0)));  // waits for bottom to ensure toggling begins at same place
+  TIFR0 |= (1 << TOV0);                 // ensures flag is clear to start with
+  while ((TIFR0 & (1 << TOV0)) == 0);   // waits for bottom to ensure toggling begins at same place
 }
 
 void fade (void) {  // adjusts the PWM to fade the LED colors
@@ -72,7 +83,7 @@ void fade (void) {  // adjusts the PWM to fade the LED colors
 
 int main (void) {
 
-  DDRB = (1 << DDB0 | 1 << DDB1 | 1 << DDB2);         // PB0, 1, 2 outputs enabled
+  DDRB = (1 << DDB1 | 1 << DDB2);                     // PB1, 2 outputs enabled
   sei();                                              // all interrupts enabled
 
   TCCR0A = (1 << COM0A1 | 1 << COM0B1 | 1 << WGM00);  // Phase-correct PWM 8-bit mode, A and B
@@ -103,21 +114,18 @@ int main (void) {
 
   while (1) {
 
-    // OCR0A = Red
-    // OCROB = Blue
-
     // RED = fades from OFF to ON
     // BLU = fades from ON to OFF
     // GRN = OFF
                                  // blue is already on
-    PORTB &= ~(1 << PB2);        // turns green off (direct drive)
+    PORTB &= ~(1 << PB2);        // turns green off (transistor drive)
     DDRB &= ~(1 << DDB2);        // turns green output off
     DDRB |= (1 << DDB0);         // turns red output on
     uint8_t i;
     for (i = 0; i < MAXBRITE - MINBRITE; i++){
       ATOMIC_BLOCK(ATOMIC_FORCEON) {
-        OCR0A = i + MINBRITE;      // red fades to on
-        OCR0B = MAXBRITE - i;      // blue fades to off
+        OCR0A = i + MINBRITE;      // OCR0A = Red, fades to on
+        OCR0B = MAXBRITE - i;      // OCROB = Blue, fades to off
       }
       delay(60);
     }
@@ -130,13 +138,15 @@ int main (void) {
     DDRB &= ~(1 << DDB1);       // turns blue output off (transistor drive)
     waitForBottom();            // to make sure PWM toggling starts at known spot,
                                 //   prevents accidental PWM inversion and irregular behavior
+    PORTB |= (1 << PB2);        // PWM is high at bottom, turns green ON for proper mirroring
+    TIFR0 |= (1 << OCF0B);      // clears any remnant flag
     TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for green on B (blue)
     DDRB |= (1 << DDB2);        // turns green output on
-    fade();                     // fades red to off, green to on, waits for bottom
+    fade();                     // fades red to off, green to on, waits for bottom (PWM is high)
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
-    waitForBottom();
-    PORTB &= ~(1 << PB2);       // starts green output from known low state (OFF), this inverts it
+    TIFR0 |= (1 << OCF0A);      // clears any remnant flag
     TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring for green on A (red)
+                                // this happens fast, PWM is still high
 
     // // RED = OFF
     // // BLU = fades from OFF to ON
