@@ -4,10 +4,10 @@ Makes her RBG LED eyes fade through the rainbow
 Would like to add a mode for just red pulsing depending on slide switch position
 
 Pins:
-1 - Red LED
+1 - PB0 - Red LED
 2 - GND
-3 - Blue LED
-4 - Green LED
+3 - PB1 - Blue LED
+4 - PB2 - Green LED
 5 - Vcc
 6 - Reset
 
@@ -59,17 +59,18 @@ ISR(TIM0_COMPB_vect) {
   PINB |= (1 << PB2);   // toggles value of PB2, mirrors the OCR0B PB1 PWM (blue)
 }
 
-void delay (uint16_t time) {  // brute force semi-accurate delay routine that doesn't use a timer
+void delay(uint16_t time) {  // brute force semi-accurate delay routine that doesn't use a timer
+
   counter = 46 * time;
   do counter--; while (counter != 0);
 }
 
-void waitForBottom (void) {  // waits for timer to reach 0 to ensure starting/stopping in correct place
+void waitForBottom(void) {  // waits for timer to reach 0 to ensure starting/stopping in correct place
   TIFR0 |= (1 << TOV0);                 // ensures flag is clear to start with
   while ((TIFR0 & (1 << TOV0)) == 0);   // waits for bottom to ensure toggling begins at same place
 }
 
-void fade (void) {  // adjusts the PWM to fade the LED colors
+void fade(void) {  // adjusts the PWM to fade the LED colors
   uint8_t j;
   for (j = 0; j < MAXBRITE - MINBRITE; j++){
     ATOMIC_BLOCK(ATOMIC_FORCEON) {
@@ -81,7 +82,16 @@ void fade (void) {  // adjusts the PWM to fade the LED colors
   waitForBottom();
 }
 
-int main (void) {
+uint8_t checkMode(void) {
+  uint8_t mode = 0;
+  DDRB &= ~(1 << DDB2);     // turns green output off
+  //delay(10);
+  mode = PINB & (1 << PINB2);
+  DDRB |= (1 << DDB2);           // resets DDRB to original value
+  return mode;
+}
+
+int main(void) {
 
   DDRB = (1 << DDB1 | 1 << DDB2);                     // PB1, 2 outputs enabled
   sei();                                              // all interrupts enabled
@@ -89,7 +99,6 @@ int main (void) {
   TCCR0A = (1 << COM0A1 | 1 << COM0B1 | 1 << WGM00);  // Phase-correct PWM 8-bit mode, A and B
   TCCR0B = (1 << CS01);                               // clk/8, timer started
 
-//  uint8_t slideSw;
   /*
   The General Gist:
   There are only 2 hardware PWM outputs on an ATTiny4, PB0 (OCR0A, RED) and PB1 (OCR0B, BLUE).
@@ -117,9 +126,23 @@ int main (void) {
     // RED = fades from OFF to ON
     // BLU = fades from ON to OFF
     // GRN = OFF
+
+
                                  // blue is already on
     PORTB &= ~(1 << PB2);        // turns green off (transistor drive)
     DDRB &= ~(1 << DDB2);        // turns green output off
+
+    // if (checkMode()) {
+    //   TCCR0A &= ~(1 << COM0A1);
+    //   DDRB |= (1 << DDB0);         // turns red output on
+    //   PORTB |= (1 << PB0);
+    //   delay(500);
+    //   PORTB &= ~(1 << PB0);
+    //   delay(500);
+    //   DDRB &= ~(1 << DDB0);         // turns red output off
+    //   TCCR0A |= (1 << COM0A1);
+    // }
+
     DDRB |= (1 << DDB0);         // turns red output on
     uint8_t i;
     for (i = 0; i < MAXBRITE - MINBRITE; i++){
@@ -129,7 +152,6 @@ int main (void) {
       }
       delay(60);
     }
-//    slideSw = PINB & (1 << PB2);
 
 
     // RED = fades from ON to OFF
