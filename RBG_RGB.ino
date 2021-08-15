@@ -1,40 +1,51 @@
 /*
 Software that controls the RBG_RGB Badge
 Makes her RBG LED eyes fade through the rainbow
-Would like to add a mode for just red pulsing depending on slide switch position
+Would like to add a mode for just red pulsing depending on a slide switch position
 
 Pins:
-1 - PB0 - Red LED
+1 - PB0 - Red LED (thru FET)
 2 - GND
-3 - PB1 - Blue LED
-4 - PB2 - Green LED
+3 - PB1 - Blue LED (thru FET)
+4 - PB2 - Green LED (thru FET)
 5 - Vcc
 6 - Reset
 
 Programming the ATTiny4:
+** NOTE!  The ATTiny4/5/9/10 use the TPI programming interface, which is different from 
+other ATTinys like the ATTiny85 which uses PDI, and also different from the ISP interface
+used by the ATMega series and most Arduinos.  You will need a USBasp programmer or an 
+original genuine Atmel AVRISP mk II.  AVRdude does not support TPI on other programmers
+(sorry Atmel ICE users, you're currently SOL).**
+
 - Arduino IDE with ATTiny10 Core by technoblogy:
   https://github.com/technoblogy/attiny10core
   http://www.technoblogy.com/show?1YQY (excellent programming instructions and blink code)
+- Add http://www.technoblogy.com/package_technoblogy_index.json to Boards Urls in preferences
+- Install ATTiny10 core using Boards Manager
 - Set "Board" to ATTiny10/9/5/6
 - Set "Chip" to ATTiny4
 - Power must be 5V
-- Pin 1, TPIDATA, cannot be driving anything of consequence downstream.
+- Pin 1, TPIDATA, cannot be driving anything of consequence downstream.  No direct driving LEDs
+  with this pin.
 - A switch to isolate power and Pin 1 during programming is a good idea.
 - Must "Upload using programmer" - no room for a bootloader!  No serial port!
-- Programmers -
-  AVRISP mkII using Libusb-win32 driver.  Use Zadig to change driver if
-    you plug it in and get a USB device not found error (using the default Atmel driver).
-  USBasp - haven't tried this yet.
+- Programmers supported:
+  Genuine original Atmel AVRISP mkII using Libusb-win32 driver.  Use Zadig to change driver if
+    you plug it in and get a USB device not found error (using the default Atmel driver).  Note
+    that many of the new knock-offs of the AVRISP mk II use USBtiny firmware which does NOT
+    support TPI at this time.
+  USBasp - haven't tried this yet but it's supposed to work.
 
 Defaults on reset:
 - Clock = 1 MHz (8 MHz internal oscillator / 8)
 - Timer Module enabled, normal port operation, OCR0A/B disabled, no clock source (timer stopped),
   clock = system clock no prescaling
 
-Thoughts:
-- DONE need to enable atomic read/writes for timer?
-- change transistors to FETs?  3V operation?  Better PWM and current consumption
-
+Notes on Dev Board:
+- transistors are now FETs, it boots up cleaner without resetting a few seconds in
+- may not need programming switch anymore
+- should try the mode switching again
 */
 
 #include <util/atomic.h>
