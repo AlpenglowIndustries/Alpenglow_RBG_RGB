@@ -48,7 +48,7 @@ Notes on Dev Board:
 - should try the mode switching again
 */
 
-#include <util/atomic.h>
+//#include <util/atomic.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdint.h>
@@ -92,10 +92,8 @@ void waitForBottom(void) {  // waits for timer to reach 0 to ensure starting/sto
 void fade(void) {  // adjusts the PWM to fade the LED colors
   uint8_t j;
   for (j = 0; j < MAXBRITE - MINBRITE; j++){
-    ATOMIC_BLOCK(ATOMIC_FORCEON) {
-      OCR0A = MAXBRITE - j;     // red (green)
-      OCR0B = j + MINBRITE;     // blue (green)
-    }
+    OCR0A = MAXBRITE - j;     // red (green)
+    OCR0B = j + MINBRITE;     // blue (green)
     delay(60);
   }
   waitForBottom();
@@ -106,7 +104,7 @@ void checkMode(void) {
   uint8_t ddrb;
   ddrb = DDRB;
   DDRB &= ~(1 << DDB2);         // turns green/PB2 to input
-  delay(20);
+  delay(5);
   mode = PINB & (1 << PINB2);   // saves current value of PB2
   if (mode) {
     PORTB = 0;  // all outputs to zero
@@ -114,15 +112,11 @@ void checkMode(void) {
     DDRB |= (1 << DDB0);        // turns red on
     uint8_t i = MINBRITE;
     int8_t change = 1;
-    ATOMIC_BLOCK(ATOMIC_FORCEON) {
-      OCR0A = i;      // red fades to off
-    }
+    OCR0A = i;      
 
     while (mode) {      // fades back and forth, checks mode
       i += change;
-      ATOMIC_BLOCK(ATOMIC_FORCEON) {
-        OCR0A = i;      // red fades
-      }
+      OCR0A = i;      // red fades
       delay(60);
       if (i == MINBRITE) OCR0A = 0;      
       if (i == MINBRITE || i == MAXBRITE) {
@@ -136,6 +130,8 @@ void checkMode(void) {
   }
 
   DDRB = ddrb;          // resets DDRB to original value
+  waitForBottom();      // to make sure PWM toggling starts at known spot,
+                        //   prevents accidental PWM inversion and irregular behavior
 }
 
 
@@ -186,10 +182,8 @@ int main(void) {
     DDRB |= (1 << DDB0);         // turns red output on
     uint8_t i;
     for (i = 0; i < MAXBRITE - MINBRITE; i++){
-      ATOMIC_BLOCK(ATOMIC_FORCEON) {
-        OCR0A = i + MINBRITE;      // OCR0A = Red, fades to on
-        OCR0B = MAXBRITE - i;      // OCROB = Blue, fades to off
-      }
+      OCR0A = i + MINBRITE;      // OCR0A = Red, fades to on
+      OCR0B = MAXBRITE - i;      // OCROB = Blue, fades to off
       delay(60);
     }
 
@@ -197,22 +191,25 @@ int main(void) {
     // RED = fades from ON to OFF
     // BLU = OFF
     // GRN = fades from OFF to ON
+
     DDRB &= ~(1 << DDB1);       // turns blue output off (transistor drive)
-    waitForBottom();            // to make sure PWM toggling starts at known spot,
-                                //   prevents accidental PWM inversion and irregular behavior
+    checkMode();
     PORTB |= (1 << PB2);        // PWM is high at bottom, turns green ON for proper mirroring
-    TIFR0 |= (1 << OCF0B);      // clears any remnant flag
+    TIFR0 |= (1 << OCF0B);      // clears any remnant flag on B
     TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for green on B (blue)
     DDRB |= (1 << DDB2);        // turns green output on
     fade();                     // fades red to off, green to on, waits for bottom (PWM is high)
     TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
-    TIFR0 |= (1 << OCF0A);      // clears any remnant flag
+    checkMode();                // while no PWMs are being mirrored
+    TIFR0 |= (1 << OCF0A);      // clears any remnant flag on A
     TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring for green on A (red)
                                 // this happens fast, PWM is still high
 
     // // RED = OFF
     // // BLU = fades from OFF to ON
     // // GRN = fades from ON to OFF
+
+
     DDRB &= ~(1 << DDB0);       // turns red output off (transistor drive)
     DDRB |= (1 << DDB1);        // turns blue output on
     fade();                     // fades green to off, blue to on, waits for bottom
