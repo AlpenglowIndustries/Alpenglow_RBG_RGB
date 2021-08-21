@@ -54,13 +54,21 @@ Notes on Dev Board:
 #include <stdint.h>
 
 #define MAXBRITE  75
-#define MINBRITE  4   // minimum PWM resolution is technically 3, but it hangs there
+#define MINBRITE  5   // minimum PWM resolution is technically 3, but it hangs if lower
 
 volatile uint32_t counter;
 
 // PB0 = red
 // PB1 = blue
 // PB2 = green
+
+// Variable count
+// 4 counter
+// 1 mode
+// 1 ddrb
+// 1 loop counter
+// ===============
+// 7 bytes RAM max
 
 ISR(TIM0_COMPA_vect) {
   PINB |= (1 << PB2);   // toggles value of PB2, mirrors the OCR0A PB0 PWM (red)
@@ -93,22 +101,52 @@ void fade(void) {  // adjusts the PWM to fade the LED colors
   waitForBottom();
 }
 
-uint8_t checkMode(void) {
+void checkMode(void) {
   uint8_t mode = 0;
-  DDRB &= ~(1 << DDB2);     // turns green output off
-  //delay(10);
-  mode = PINB & (1 << PINB2);
-  DDRB |= (1 << DDB2);           // resets DDRB to original value
-  return mode;
+  uint8_t ddrb;
+  ddrb = DDRB;
+  DDRB &= ~(1 << DDB2);         // turns green/PB2 to input
+  delay(20);
+  mode = PINB & (1 << PINB2);   // saves current value of PB2
+  if (mode) {
+    PORTB = 0;  // all outputs to zero
+    DDRB &= ~(1 << DDB1);       // turns blue off
+    DDRB |= (1 << DDB0);        // turns red on
+    uint8_t i = MINBRITE;
+    int8_t change = 1;
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+      OCR0A = i;      // red fades to off
+    }
+
+    while (mode) {      // fades back and forth, checks mode
+      i += change;
+      ATOMIC_BLOCK(ATOMIC_FORCEON) {
+        OCR0A = i;      // red fades
+      }
+      delay(60);
+      if (i == MINBRITE) OCR0A = 0;      
+      if (i == MINBRITE || i == MAXBRITE) {
+        change = -change;
+        delay(440);
+      }
+      mode = PINB & (1 << PINB2);
+    }
+
+    PORTB &= (1 << PB0);  // turns red off
+  }
+
+  DDRB = ddrb;          // resets DDRB to original value
 }
+
 
 int main(void) {
 
-  DDRB = (1 << DDB1 | 1 << DDB2);                     // PB1, 2 outputs enabled
+  DDRB = (1 << DDB1 | 1 << DDB2);                     // PB1, PB2 outputs enabled
   sei();                                              // all interrupts enabled
 
   TCCR0A = (1 << COM0A1 | 1 << COM0B1 | 1 << WGM00);  // Phase-correct PWM 8-bit mode, A and B
-  TCCR0B = (1 << CS01);                               // clk/8, timer started
+  TCCR0B = (1 << CS01);                               // clk/8, timer started, 125 kHz timer clock  
+                                                      // and 245 Hz PWM frequency
 
   /*
   The General Gist:
@@ -143,16 +181,7 @@ int main(void) {
     PORTB &= ~(1 << PB2);        // turns green off (transistor drive)
     DDRB &= ~(1 << DDB2);        // turns green output off
 
-    // if (checkMode()) {
-    //   TCCR0A &= ~(1 << COM0A1);
-    //   DDRB |= (1 << DDB0);         // turns red output on
-    //   PORTB |= (1 << PB0);
-    //   delay(500);
-    //   PORTB &= ~(1 << PB0);
-    //   delay(500);
-    //   DDRB &= ~(1 << DDB0);         // turns red output off
-    //   TCCR0A |= (1 << COM0A1);
-    // }
+    checkMode();
 
     DDRB |= (1 << DDB0);         // turns red output on
     uint8_t i;
