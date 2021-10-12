@@ -59,8 +59,8 @@ Notes on Dev Board:
 volatile uint32_t counter;
 
 // PB0 = red
-// PB1 = blue
-// PB2 = green
+// PB1 = green
+// PB2 = blue
 
 // Variable count
 // 4 counter
@@ -75,7 +75,7 @@ ISR(TIM0_COMPA_vect) {
 }
 
 ISR(TIM0_COMPB_vect) {
-  PINB |= (1 << PB2);   // toggles value of PB2, mirrors the OCR0B PB1 PWM (blue)
+  PINB |= (1 << PB2);   // toggles value of PB2, mirrors the OCR0B PB1 PWM (green)
 }
 
 void delay(uint16_t time) {  // brute force semi-accurate delay routine that doesn't use a timer
@@ -90,10 +90,10 @@ void waitForBottom(void) {  // waits for timer to reach 0 to ensure starting/sto
 }
 
 void fade(void) {  // adjusts the PWM to fade the LED colors
-  uint8_t j;
-  for (j = 0; j < MAXBRITE - MINBRITE; j++){
-    OCR0A = MAXBRITE - j;     // red (green)
-    OCR0B = j + MINBRITE;     // blue (green)
+  uint8_t i;
+  for (i = 0; i < MAXBRITE - MINBRITE; i++){
+    OCR0A = i + MINBRITE;      // OCR0A = Red (blue), fades to on
+    OCR0B = MAXBRITE - i;      // OCROB = Green, fades to off
     delay(60);
   }
   waitForBottom();
@@ -103,12 +103,12 @@ void checkMode(void) {
   uint8_t mode = 0;
   uint8_t ddrb;
   ddrb = DDRB;
-  DDRB &= ~(1 << DDB2);         // turns green/PB2 to input
+  DDRB &= ~(1 << DDB2);         // turns blue/PB2 to input
   delay(5);
   mode = PINB & (1 << PINB2);   // saves current value of PB2
   if (mode) {
     PORTB = 0;  // all outputs to zero
-    DDRB &= ~(1 << DDB1);       // turns blue off
+    DDRB &= ~(1 << DDB1);       // turns green off
     DDRB |= (1 << DDB0);        // turns red on
     uint8_t i = MINBRITE;
     int8_t change = 1;
@@ -117,11 +117,11 @@ void checkMode(void) {
     while (mode) {      // fades back and forth, checks mode
       i += change;
       OCR0A = i;      // red fades
-      delay(60);
+      delay(30);
       if (i == MINBRITE) OCR0A = 0;      
       if (i == MINBRITE || i == MAXBRITE) {
         change = -change;
-        delay(440);
+        delay(60);
       }
       mode = PINB & (1 << PINB2);
     }
@@ -137,7 +137,7 @@ void checkMode(void) {
 
 int main(void) {
 
-  DDRB = (1 << DDB1 | 1 << DDB2);                     // PB1, PB2 outputs enabled
+  DDRB = (1 << DDB0 | 1 << DDB2);                     // PB0, PB2 outputs enabled
   sei();                                              // all interrupts enabled
 
   TCCR0A = (1 << COM0A1 | 1 << COM0B1 | 1 << WGM00);  // Phase-correct PWM 8-bit mode, A and B
@@ -168,52 +168,50 @@ int main(void) {
 
   while (1) {
 
-    // RED = fades from OFF to ON
-    // BLU = fades from ON to OFF
-    // GRN = OFF
+    // RED = fades from ON to OFF
+    // GRN = fades from OFF to ON
+    // BLU = OFF
 
 
-                                 // blue is already on
-    PORTB &= ~(1 << PB2);        // turns green off (transistor drive)
-    DDRB &= ~(1 << DDB2);        // turns green output off
-
+                                 // red is already on
+    PORTB &= ~(1 << PB2);        // turns blue output to zero
+    DDRB &= ~(1 << DDB2);        // turns blue output off
     checkMode();
+    DDRB |= (1 << DDB1);         // turns green output on
 
-    DDRB |= (1 << DDB0);         // turns red output on
-    uint8_t i;
-    for (i = 0; i < MAXBRITE - MINBRITE; i++){
-      OCR0A = i + MINBRITE;      // OCR0A = Red, fades to on
-      OCR0B = MAXBRITE - i;      // OCROB = Blue, fades to off
+    uint8_t j;
+    for (j = 0; j < MAXBRITE - MINBRITE; j++){
+      OCR0A = MAXBRITE - j;     // red (blue)    ON to OFF
+      OCR0B = j + MINBRITE;     // green (blue)  OFF to ON
       delay(60);
     }
 
 
-    // RED = fades from ON to OFF
-    // BLU = OFF
-    // GRN = fades from OFF to ON
+    // RED = OFF 
+    // GRN = fades from ON to OFF
+    // BLU = fades from OFF to ON
 
-    DDRB &= ~(1 << DDB1);       // turns blue output off (transistor drive)
+    DDRB &= ~(1 << DDB0);       // turns red output off 
     checkMode();
-    PORTB |= (1 << PB2);        // PWM is high at bottom, turns green ON for proper mirroring
-    TIFR0 |= (1 << OCF0B);      // clears any remnant flag on B
-    TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for green on B (blue)
-    DDRB |= (1 << DDB2);        // turns green output on
-    fade();                     // fades red to off, green to on, waits for bottom (PWM is high)
-    TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (blue)
-    checkMode();                // while no PWMs are being mirrored
+    PORTB |= (1 << PB2);        // PWM is high at bottom, sets blue to high for proper mirroring
     TIFR0 |= (1 << OCF0A);      // clears any remnant flag on A
-    TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring for green on A (red)
+    TIMSK0 |= (1 << OCIE0A);    // enables PWM mirroring for blue on A (red)
+    DDRB |= (1 << DDB2);        // turns blue output on
+    fade();                     // Red(blue) fades to on, green fades to off, waits for bottom (PWM is high)
+    TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring on A (red)
+    checkMode();                // do this while no PWMs are being mirrored
+    TIFR0 |= (1 << OCF0B);      // clears any remnant flag on B
+    TIMSK0 |= (1 << OCIE0B);    // enables PWM mirroring for blue on B (green)
                                 // this happens fast, PWM is still high
 
-    // // RED = OFF
-    // // BLU = fades from OFF to ON
-    // // GRN = fades from ON to OFF
+    // // RED = fades from OFF to ON
+    // // GRN = OFF
+    // // BLU = fades from ON to OFF
 
-
-    DDRB &= ~(1 << DDB0);       // turns red output off (transistor drive)
-    DDRB |= (1 << DDB1);        // turns blue output on
-    fade();                     // fades green to off, blue to on, waits for bottom
-    TIMSK0 &= ~(1 << OCIE0A);   // disables PWM mirroring on A (red)
+    DDRB &= ~(1 << DDB1);       // turns green output off
+    DDRB |= (1 << DDB0);        // turns red output on
+    fade();                     // red fades to on, green(blue) fades to off, waits for bottom
+    TIMSK0 &= ~(1 << OCIE0B);   // disables PWM mirroring on B (green)
 
   }   // end while(1)
 }     // end main
