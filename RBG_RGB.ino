@@ -23,7 +23,7 @@ original genuine Atmel AVRISP mk II.  AVRdude does not support TPI on other prog
   http://www.technoblogy.com/show?1YQY (excellent programming instructions and blink code)
 - Add http://www.technoblogy.com/package_technoblogy_index.json to Boards Urls in preferences
 - Install ATTiny10 core using Boards Manager
-- Set "Board" to ATTiny10/9/5/6
+- Set "Board" to ATTiny10/9/5/4
 - Set "Chip" to ATTiny4
 - Power must be 5V
 - Pin 1, TPIDATA, cannot be driving anything of consequence downstream.  No direct driving LEDs
